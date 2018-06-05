@@ -1,0 +1,10 @@
+
+https://docs.docker.com/get-started/part2/#apppy
+
+	1. creamos una app web en python y la dockerizamos con Dockerfile
+
+	2. buildeamos la imagen 
+		docker build -t friendlyhello .
+
+	3. verificamos la imagen creada
+		docker image ls	
