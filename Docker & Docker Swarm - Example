@@ -1,6 +1,7 @@
 
 Docker - Tutorial Completo
 
+CONTAINER:
 https://docs.docker.com/get-started/part2/#apppy
 
 	1. creamos una app web en python y la dockerizamos con Dockerfile
@@ -66,8 +67,69 @@ https://docs.docker.com/get-started/part2/#apppy
 		
 			docker run -p 4000:80 damianciocca/examples:part2	
 
+SERVICES:
 https://docs.docker.com/get-started/part3/#prerequisites
 
-				
+	Nota: Services are really just “containers in production.” A service only runs one image,
+
+		1. Creamos un stack de servicios: stack.yml (esto es el docker-compose)
+			version: "3"
+				services:
+				  web:
+				    # replace username/repo:tag with your name and image details
+				    image: damianciocca/examples:part2
+				    deploy:
+				      replicas: 5
+				      resources:
+				        limits:
+				          cpus: "0.1"
+				          memory: 50M
+				      restart_policy:
+				        condition: on-failure
+				    ports:
+				      - "80:80"
+				    networks:
+				      - webnet
+				networks:
+				  webnet:
+
+			This docker-compose.yml file tells Docker to do the following:
+
+			Pull the image we uploaded in step 2 from the registry.
+
+			Run 5 instances of that image as a service called web, limiting each one to use, at most, 10% of the CPU (across all cores), and 50MB of RAM.
+
+			Immediately restart containers if one fails.
+
+			Map port 80 on the host to web’s port 80.
+
+			Instruct web’s containers to share port 80 via a load-balanced network called webnet. (Internally, the containers themselves publish to web’s port 80 at an ephemeral port.)
+
+			Define the webnet network with the default settings (which is a load-balanced overlay network).
+
+	  	2. Inicializamos docker swarm para poder deployar el docker compose previo (stack.yml)
+			
+			docker swarm init	
+
+		3. deployamos el stack de servicios (docker compose) en el docker swarm inicializado previamente
+		
+			docker stack deploy -c stack.yml getstartedlab	
+
+				* Creating network getstartedlab_webnet
+				* Creating service getstartedlab_web
+
+				Our single service stack is running 5 container instances of our deployed image on one host
+
+		4. verificamos los servicios activos
+		
+			docker service ls 
+
+			ID                  NAME                MODE                REPLICAS            IMAGE                         PORTS
+			eg8a79wg1gfu        getstartedlab_web   replicated          5/5                 damianciocca/examples:part2   *:80->80/tcp
+	
+		5. verificamos los logs
+
+			docker service logs getstartedlab_web --follow	
+
 
 
