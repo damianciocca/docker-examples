@@ -1,4 +1,6 @@
 
+Docker - Tutorial Completo
+
 https://docs.docker.com/get-started/part2/#apppy
 
 	1. creamos una app web en python y la dockerizamos con Dockerfile
@@ -8,3 +10,64 @@ https://docs.docker.com/get-started/part2/#apppy
 
 	3. verificamos la imagen creada
 		docker image ls	
+
+	4. levantamos la imagen en un container => mapping your machine’s port 4000 to the container’s published port 80 using -p
+		4.1. docker run -p 4000:80 friendlyhello	
+
+			curl http://localhost:4000
+
+		o bien levantamos en background
+
+		4.2. docker run -d -p 4000:80 friendlyhello 
+
+	5. verificamos los containers corriendo
+
+		docker containers ls
+
+	6. paramos el container
+		
+		docker container stop <CONTAINER_ID>
+
+	7. subimos la imagen a docker registry para compartirla
+	
+		7.1 sacamos una cta en docker hub
+			Docker Propio (dockerhub)	
+				https://hub.docker.com/r/damianciocca/examples/
+				ID damianciocca	
+				pass racing90	
+
+		7.2 nos logueamos a docker hub		
+
+			docker login
+
+			Nota: The notation for associating a local image with a repository on a registry is username/repository:tag. The tag is optional, but recommended, since it is the mechanism that registries use to give Docker images a version
+
+			Creamos un repository con el nombre "examples"
+
+		7.2 tagueamos la imagen creada 
+			Ej: docker tag image username/repository:tag
+			
+			Verificamos q la imagen este creada con el nombre friendlyhello
+			docker images
+				REPOSITORY             TAG                 IMAGE ID            CREATED             SIZE
+				friendlyhello          latest              265482889e93        20 minutes ago      132MB
+
+			docker tag friendlyhello damianciocca/examples:part2	
+
+			docker images
+				REPOSITORY              TAG                 IMAGE ID            CREATED             SIZE
+				damianciocca/examples   part2               265482889e93        24 minutes ago      132MB
+
+		7.3 publicamos la imagen a docker hub
+
+			docker push damianciocca/examples:part2
+
+		7.3 pull & run 
+		
+			docker run -p 4000:80 damianciocca/examples:part2	
+
+https://docs.docker.com/get-started/part3/#prerequisites
+
+				
+
+
