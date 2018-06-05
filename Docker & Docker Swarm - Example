@@ -1,10 +1,31 @@
 
 Docker - Tutorial Completo
 
-CONTAINER:
+=======> CONTAINER:
 https://docs.docker.com/get-started/part2/#apppy
 
 	1. creamos una app web en python y la dockerizamos con Dockerfile
+		
+		# Use an official Python runtime as a parent image
+		FROM python:2.7-slim
+
+		# Set the working directory to /app
+		WORKDIR /app
+
+		# Copy the current directory contents into the container at /app
+		ADD . /app
+
+		# Install any needed packages specified in requirements.txt
+		RUN pip install --trusted-host pypi.python.org -r requirements.txt
+
+		# Make port 80 available to the world outside this container
+		EXPOSE 80
+
+		# Define environment variable
+		ENV NAME World
+
+		# Run app.py when the container launches
+		CMD ["python", "app.py"]
 
 	2. buildeamos la imagen 
 		docker build -t friendlyhello .
@@ -67,7 +88,7 @@ https://docs.docker.com/get-started/part2/#apppy
 		
 			docker run -p 4000:80 damianciocca/examples:part2	
 
-SERVICES:
+=======> SERVICES (en un nodo):
 https://docs.docker.com/get-started/part3/#prerequisites
 
 	Nota: Services are really just “containers in production.” A service only runs one image,
@@ -107,6 +128,8 @@ https://docs.docker.com/get-started/part3/#prerequisites
 
 			Define the webnet network with the default settings (which is a load-balanced overlay network).
 
+			Importante: Es ver que estas 5 replicas tienen un load balancer interno q distribuye los pedidos aca cada replica
+
 	  	2. Inicializamos docker swarm para poder deployar el docker compose previo (stack.yml)
 			
 			docker swarm init	
@@ -120,7 +143,14 @@ https://docs.docker.com/get-started/part3/#prerequisites
 
 				Our single service stack is running 5 container instances of our deployed image on one host
 
-		4. verificamos los servicios activos
+		4. verificamos el stack deployado
+
+			docker stack ls
+
+				NAME                SERVICES
+				getstartedlab       1
+
+		4. verificamos los servicios activos de los stacks
 		
 			docker service ls 
 
@@ -131,5 +161,40 @@ https://docs.docker.com/get-started/part3/#prerequisites
 
 			docker service logs getstartedlab_web --follow	
 
+		6. verificamos los procesos/tareas/tasks de un servicio
+		
+			docker service ps getstartedlab_web	
 
+			ID                  NAME                  IMAGE                         NODE                DESIRED STATE       CURRENT STATE ix9pnwp6lu71        getstartedlab_web.1   damianciocca/examples:part2   moby                Running             Running 6 minutes ago
+			4m75crg2cn87        getstartedlab_web.2   damianciocca/examples:part2   moby                Running             Running 6 minutes ago
+			qsbyoe7gyg04        getstartedlab_web.3   damianciocca/examples:part2   moby                Running             Running 6 minutes ago
+			w1wb0c5ilruy        getstartedlab_web.4   damianciocca/examples:part2   moby                Running             Running 6 minutes ago
+			hmllw5tib91n        getstartedlab_web.5   damianciocca/examples:part2   moby                Running             Running 6 minutes ago
+
+		7. 	Verificamos que cada pedido q hagamos una de las replicas va a responder
+
+			Either way, the container ID changes, demonstrating the load-balancing; with each request, one of the 5 tasks is chosen, in a round-robin fashion, to respond. The container IDs match your output from the previous command (docker container ls -q).
+
+		8.  Agregamos mas replicas	
+
+			You can scale the app by changing the replicas value in stack.yml, saving the change, and re-running the docker stack deploy command:
+
+				docker stack deploy -c stack.yml getstartedlab
+
+		9. removemos el stack (swarm) y por ende, se bajaran los servicios (en este caso dos) y de cada servicio de eliminarn los procesos/tasks (en este caso 5 replicas)
+
+				docker stack rm getstartedlab
+
+					Removing service getstartedlab_web
+					Removing network getstartedlab_webnet		
+
+				o bien
+				
+				docker swarm leave --force
+
+					Node left the swarm.
+
+=======> CLUSTER (servicios en varios nodos - diferentes machines)
+https://docs.docker.com/get-started/part4/							
+				
 
