@@ -194,7 +194,17 @@ https://docs.docker.com/get-started/part3/#prerequisites
 
 					Node left the swarm.
 
-=======> CLUSTER (servicios en varios nodos - diferentes machines)
-https://docs.docker.com/get-started/part4/							
+=======> CLUSTER/SWARM (servicios en varios nodos - diferentes machines)
+https://docs.docker.com/get-started/part4/		
+
+	Multi-container, multi-machine applications are made possible by joining multiple machines into a “Dockerized” cluster called a swarm.					
+	A swarm is a group of machines that are running Docker and joined into a cluster
+
+	Swarm managers are the only machines in a swarm that can execute your commands, or authorize other machines to join the swarm as workers
+
+	A swarm is made up of multiple nodes, which can be either physical or virtual machines.
+
+	The basic concept is simple enough: 
+	run docker swarm init to enable swarm mode and make your current machine a swarm manager, then run docker swarm join on other machines to have them join the swarm as workers
 				
 
