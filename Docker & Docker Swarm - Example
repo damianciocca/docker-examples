@@ -346,7 +346,7 @@ https://docs.docker.com/get-started/part4/
 
 				To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
 
-		6. Agregamos un worker al manager creado previamente
+		6. Agregamos un worker al manager creado previamente. Vamos a la VM myvm2 y lanzamos el siguiente comando
 
 			docker swarm join --token SWMTKN-1-4ljav6drai86zy0wq4ty3ji1e3b31mvx63krntq1cdj78k4qh6-bk4h356q27il162u8iyqgwitw 192.168.99.100:2377
 
@@ -363,4 +363,123 @@ https://docs.docker.com/get-started/part4/
 				x8vnjtagzdoyq4md464l0p2rf     myvm2               Ready               Active
 
 
-			Importante: Remember that only swarm managers like myvm1 execute Docker commands; workers are just for capacity.	
+			Importante: Remember that only swarm managers like myvm1 execute Docker commands; workers are just for capacity.
+			
+		8. Deploy the app on the swarm manager: desde el manager -> VM "myvm1". Nos paramos en el proyecto que tiene el stack.yml
+			
+			docker stack deploy -c stack.yml getstartedlab
+
+				Note: If your image is stored on a private registry instead of Docker Hub, you need to be logged in using docker login <your-registry> and then you need to add the --with-registry-auth flag to the above command.
+
+				Esto puede tardar unos minutos.. 
+
+		9. Verificamos el estado de los servicios del deploy previo. Siempre desde el manager (myvm1)
+		
+			docker service ls				
+
+				ID                  NAME                MODE                REPLICAS            IMAGE                         PORTS
+				ujhnr46utaml        getstartedlab_web   replicated          8/8                 damianciocca/examples:part2   *:80->80/tc
+
+				Nota: obsercamos las REPLICAS q estan 8 de 8 running.
+
+			docker stack ps getstartedlab
+			
+				ID                  NAME                  IMAGE                         NODE                DESIRED STATE       CURRENT STATE           ERROR               PORTS
+				xfbmnqskl8jc        getstartedlab_web.1   damianciocca/examples:part2   myvm1               Running             Running 4 minutes ago
+				5l4i6syk8hi5        getstartedlab_web.2   damianciocca/examples:part2   myvm2               Running             Running 4 minutes ago
+				1b20r4wt58q8        getstartedlab_web.3   damianciocca/examples:part2   myvm1               Running             Running 4 minutes ago
+				3quubapa4yo5        getstartedlab_web.4   damianciocca/examples:part2   myvm2               Running             Running 4 minutes ago
+				ianomm2p45s6        getstartedlab_web.5   damianciocca/examples:part2   myvm1               Running             Running 4 minutes ago
+				32665eid9wwm        getstartedlab_web.6   damianciocca/examples:part2   myvm2               Running             Running 4 minutes ago
+				xylhnzvptz0l        getstartedlab_web.7   damianciocca/examples:part2   myvm1               Running             Running 4 minutes ago
+				u41l0qfqpr6p        getstartedlab_web.8   damianciocca/examples:part2   myvm2               Running             Running 4 minutes ago	
+				
+				Note: the services and associated containers have been distributed between both myvm1 and myvm2.
+
+			docker ps
+
+				CONTAINER ID        IMAGE                         COMMAND             CREATED             STATUS              PORTS               NAMES
+				a986d84e3029        damianciocca/examples:part2   "python app.py"     2 minutes ago       Up 2 minutes        80/tcp              getstartedlab_web.3.1b20r4wt58q8epzcquiknlkxr
+				3f274ef64b04        damianciocca/examples:part2   "python app.py"     2 minutes ago       Up 2 minutes        80/tcp              getstartedlab_web.7.xylhnzvptz0lc2po9d9sk09r3
+				dd110605632d        damianciocca/examples:part2   "python app.py"     2 minutes ago       Up 2 minutes        80/tcp              getstartedlab_web.1.xfbmnqskl8jcsnnx5zc3wvf5k
+				df1c389e8fa5        damianciocca/examples:part2   "python app.py"     2 minutes ago       Up 2 minutes        80/tcp              getstartedlab_web.5.ianomm2p45s6gtyti5d45looo
+
+		10. Verificamos los containers levantados en el worker (myvm2)
+
+			docker ps
+
+				CONTAINER ID        IMAGE                         COMMAND             CREATED             STATUS              PORTS               NAMES
+				b5d943352402        damianciocca/examples:part2   "python app.py"     43 seconds ago      Up 41 seconds       80/tcp              getstartedlab_web.2.5l4i6syk8hi52dj07fnbspk2b
+				2fcd04e35baa        damianciocca/examples:part2   "python app.py"     43 seconds ago      Up 41 seconds       80/tcp              getstartedlab_web.6.32665eid9wwm11mwzkyppenxj
+				840a149eda33        damianciocca/examples:part2   "python app.py"     43 seconds ago      Up 41 seconds       80/tcp              getstartedlab_web.8.u41l0qfqpr6phodav3daji15d
+				ec1151803506        damianciocca/examples:part2   "python app.py"     43 seconds ago      Up 41 seconds       80/tcp              getstartedlab_web.4.3quubapa4yo5hw5usfg77jnkg
+
+			Verificamos q las 8 replicas estan deployadas 4 en el manager y las otras 4 en el worker
+
+			You can access your app from the IP address of either myvm1 or myvm2.
+
+			The network you created in stack.yml is shared between them and load-balancing. 
+
+			Desde afuera le pegamos a una IP o a otra IP e internamente va a redirigir la peticion a una de las 4 replicas q tiene levantada (servicio/container). Internamente va a distribuir la carga a cada app web
+
+		11. jugamos levantando y bajando alguna de las maquinas (en este caso bajamos el worker)
+		
+				docker-machine stop myvm2	
+
+					nota: al bajar la instancia myvm2 vemos q las 4 replicas se distribuyeron a myvm1. Ahora myvm1 tiene las 8 replicas
+
+					y desde myvm1 ejecutamos: docker stack ps getstartedlab
+				
+				ID                  NAME                      IMAGE                         NODE                DESIRED STATE       CURRENT STATE            ERROR               PORTS
+				ko7b1leh6640        getstartedlab_web.1       damianciocca/examples:part2   myvm1               Running             Running 8 minutes ago
+				xyq7l9b3sfg5         \_ getstartedlab_web.1   damianciocca/examples:part2   myvm2               Shutdown            Shutdown 6 minutes ago
+				fpt4btf6oe1i        getstartedlab_web.2       damianciocca/examples:part2   myvm1               Running             Running 11 minutes ago
+				8fue6l6zegan        getstartedlab_web.3       damianciocca/examples:part2   myvm1               Running             Running 8 minutes ago
+				1m93qpwuioh5         \_ getstartedlab_web.3   damianciocca/examples:part2   myvm2               Shutdown            Shutdown 6 minutes ago
+				be0ad3k5cesa        getstartedlab_web.4       damianciocca/examples:part2   myvm1               Running             Running 11 minutes ago
+				04zvh6lebmzo        getstartedlab_web.5       damianciocca/examples:part2   myvm1               Running             Running 8 minutes ago
+				0i85301xv27v         \_ getstartedlab_web.5   damianciocca/examples:part2   myvm2               Shutdown            Shutdown 6 minutes ago
+				vxg8jdbfewrm        getstartedlab_web.6       damianciocca/examples:part2   myvm1               Running             Running 11 minutes ago
+				ykxd22r69cqz        getstartedlab_web.7       damianciocca/examples:part2   myvm1               Running             Running 8 minutes ago
+				tzikm1bk83kz         \_ getstartedlab_web.7   damianciocca/examples:part2   myvm2               Shutdown            Shutdown 6 minutes ago
+				ja1wyfl7day1        getstartedlab_web.8       damianciocca/examples:part2   myvm1               Running             Running 11 minutes ago
+
+				docker-machine start myvm2
+
+					nota: al volver a subir la instancia myvm2, vemos q no se vuelven a re-balancear las replicas en myvm2 
+
+		12. Ahora hacemos lo mismo q el punto 11 pero al reves. Bajamos primero el manager (myvm1)
+		
+				docker-machine stop myvm1
+			
+					nota: al bajar la instancia myvm1 (manager) vemos q las 4 replicas NO se distribuyeron a myvm2. Solo nos quedamos con 4 replicas
+
+				docker-machine start myvm1
+				
+				y desde myvm1 ejecutamos: docker stack ps getstartedlab
+
+				ID                  NAME                      IMAGE                         NODE                DESIRED STATE       CURRENT STATE            ERROR                              PORTS
+				9oh15wvl7sm5        getstartedlab_web.1       damianciocca/examples:part2   myvm1               Running             Running 24 seconds ago
+				h8ky5j7sl1qy         \_ getstartedlab_web.1   damianciocca/examples:part2   myvm1               Shutdown            Failed 30 seconds ago    "No such container: getstarted…"
+				v2b3zen9xw13        getstartedlab_web.2       damianciocca/examples:part2   myvm2               Running             Running 25 seconds ago
+				3ipbxfwpl9y7        getstartedlab_web.3       damianciocca/examples:part2   myvm1               Running             Running 24 seconds ago
+				ub8b0yxzsaeo         \_ getstartedlab_web.3   damianciocca/examples:part2   myvm1               Shutdown            Failed 30 seconds ago    "No such container: getstarted…"
+				ypp0b4vwxkvq        getstartedlab_web.4       damianciocca/examples:part2   myvm2               Running             Running 25 seconds ago
+				sf4jsq1bwit0        getstartedlab_web.5       damianciocca/examples:part2   myvm1               Running             Running 24 seconds ago
+				snywl85hz87j         \_ getstartedlab_web.5   damianciocca/examples:part2   myvm1               Shutdown            Failed 30 seconds ago    "No such container: getstarted…"
+				m5h5z5d2avhd        getstartedlab_web.6       damianciocca/examples:part2   myvm2               Running             Running 25 seconds ago
+				faayavhmvi6f        getstartedlab_web.7       damianciocca/examples:part2   myvm1               Running             Running 24 seconds ago
+				fs7hpsib9wu7         \_ getstartedlab_web.7   damianciocca/examples:part2   myvm1               Shutdown            Failed 30 seconds ago    "No such container: getstarted…"
+				vc8xl4rbac3u        getstartedlab_web.8       damianciocca/examples:part2   myvm2               Running             Running 25 seconds ago
+	
+				IMPORTANTE. Aca vemos q se volvieron a restaurar las 4 replicas del manager
+
+			CONCLUSION
+			
+				Si se cae el worker, las replicas se pasan al manager (excepto q se lo especifique q la replica no puede correr en el manager)
+				Si se vuelve a levantar el worker, las replicas no se vuelven a restaurar automaticamente. Quedan todas en el manager
+					En este escenario queda desbalanceado el swarm.
+
+				Si se cae el manager, las replicas NO del manager NO pasan al worker
+				Si se levanta el manager, se vuelven a restauran las replicas, quedando tanto el worker como el manager con sus replicas correspondientes.
+					En este caso, queda todo perfectamente balanceado.		
