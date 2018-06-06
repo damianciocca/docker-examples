@@ -197,14 +197,170 @@ https://docs.docker.com/get-started/part3/#prerequisites
 =======> CLUSTER/SWARM (servicios en varios nodos - diferentes machines)
 https://docs.docker.com/get-started/part4/		
 
-	Multi-container, multi-machine applications are made possible by joining multiple machines into a “Dockerized” cluster called a swarm.					
-	A swarm is a group of machines that are running Docker and joined into a cluster
+	Docker Machine 
 
-	Swarm managers are the only machines in a swarm that can execute your commands, or authorize other machines to join the swarm as workers
+		1. Overview
+			https://docs.docker.com/machine/overview/
+			
+			* Docker Machine is a tool that lets you install Docker Engine on virtual hosts, and manage the hosts with docker-machine commands
+			* Using docker-machine commands, you can start, inspect, stop, and restart a managed host
+			
+			**  Docker Engine accepts docker commands from the CLI, such as docker run <image>, docker ps, etc
+			**  Docker Machine is a tool for provisioning and managing your Dockerized hosts (hosts with Docker Engine on them)
 
-	A swarm is made up of multiple nodes, which can be either physical or virtual machines.
+			Point the Machine CLI at a running, managed host, and you can run docker commands directly on that host:
+			=> docker-machine env default
 
-	The basic concept is simple enough: 
-	run docker swarm init to enable swarm mode and make your current machine a swarm manager, then run docker swarm join on other machines to have them join the swarm as workers
-				
+		2. Instalamos el comando docker-machine	
+			https://docs.docker.com/machine/install-machine/#install-machine-directly
+			
+			* instalamos Virtual Box en Mac para crear virtualizaciones de host
 
+			bash
+
+			base=https://github.com/docker/machine/releases/download/v0.14.0 && curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/usr/local/bin/docker-machine && chmod +x /usr/local/bin/docker-machine	
+
+		3. Instalamos Virtual Box para virtualizacion de host 
+			https://www.virtualbox.org/wiki/Downloads
+
+		4. Operamos con docker-machine	
+		https://docs.docker.com/machine/get-started/#use-machine-to-run-docker-containers
+
+		4.1. crear una machine (host virtual con docker instalado)	
+  			
+  			docker-machine create --driver virtualbox default
+
+			Note: pass the appropriate driver to the --driver flag and provide a machine name "default"
+		
+		4.2. listar las machines availables
+			
+			docker-machine ls
+			
+			NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER        ERRORS
+			default   -        virtualbox   Running   tcp://192.168.99.100:2376           v18.05.0-ce
+
+		4.3. obtener las variables de entorno de la nueva VM (machine)
+			
+			docker-machine env default	
+
+				set -gx DOCKER_TLS_VERIFY "1";
+				set -gx DOCKER_HOST "tcp://192.168.99.100:2376";
+				set -gx DOCKER_CERT_PATH "/Users/damian/.docker/machine/machines/default";
+				set -gx DOCKER_MACHINE_NAME "default";
+				# Run this command to configure your shell:
+				# eval (docker-machine env default)
+
+			o bien si estamos en fish
+			docker-machine env --shell fish default	
+
+		4.4. conectar nuestro shell (el ciente de docker) a la nueva VM (machine)			
+			
+			eval "$(docker-machine env default)"
+			
+			o bien si estamos en fish
+			eval (docker-machine env --shell fish default)
+
+		4.5. obtener la IP de la nueva VM
+			
+			docker-machine ip default	
+
+		4.6. levantamos un webserver NGINX
+		
+			docker run -d -p 8000:80 nginx	
+
+			http://192.168.99.100:8000/
+			note: accedemos con la IP q se nos asigno cuando levantamos la machine
+
+		4.7. paramos y volvemos a levantar las VM
+		
+			docker-machine stop		
+			NAME      ACTIVE   DRIVER       STATE     URL   SWARM   DOCKER    ERRORS
+			default   -        virtualbox   Stopped                 Unknown
+
+			docker-machine start	
+
+		4.8. para desconectar nuestro cliente de docker de la VM
+
+			docker-machine env -u
+			docker-machine env -u --shell fish
+
+				set -e DOCKER_TLS_VERIFY;
+				set -e DOCKER_HOST;
+				set -e DOCKER_CERT_PATH;
+				set -e DOCKER_MACHINE_NAME;
+				# Run this command to configure your shell:
+				# eval (docker-machine env -u --shell fish)	
+
+			eval (docker-machine env -u --shell fish)
+			
+		4.9. eliminamos la VM
+			
+			docker-machine rm default		
+
+	SWARM
+	
+		Multi-container, multi-machine applications are made possible by joining multiple machines into a “Dockerized” cluster called a swarm.					
+		A swarm is a group of machines that are running Docker engine and joined into a cluster
+
+		Swarm managers are the only machines in a swarm that can execute your commands, or authorize other machines to join the swarm as workers
+
+		A swarm is made up of multiple nodes, which can be either physical or virtual machines.
+
+		The basic concept is simple enough: 
+			run docker swarm init to enable swarm mode and make your current machine a swarm manager, then run docker swarm join on other machines to have them join the swarm as workers
+
+
+		1. Creando un cluster. create a couple of VMs using docker-machine, using the VirtualBox driver:	
+
+			docker-machine create --driver virtualbox myvm1
+			docker-machine create --driver virtualbox myvm2
+
+			Note: Esto es lo q hariamos con AWS creando dos instancias de EC2
+
+		2. Listamos las VMs
+		
+			docker-machine ls
+		
+			NAME    ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER        ERRORS
+			myvm1   -        virtualbox   Running   tcp://192.168.99.100:2376           v18.05.0-ce
+			myvm2   -        virtualbox   Running   tcp://192.168.99.101:2376           v18.05.0-ce	
+
+
+		3. Inicializamos el SWARM
+			The first machine acts as the manager, which executes management commands and authenticates workers to join the swarm, and the second is a worker.
+
+		4. Abrimos en dos consolas diferentes y linkeamos el cliente de docker (docker) a cada VM
+			
+			docker-machine env --shell fish myvm1
+			docker-machine env --shell fish myvm2	
+
+		5. Inicializamos en myvm1 el manager 
+			
+			docker swarm init --advertise-addr 192.168.99.100
+
+				Swarm initialized: current node (ix6ml4dxsj37ku04w34exojru) is now a manager.
+
+				To add a worker to this swarm, run the following command:
+
+				    docker swarm join --token SWMTKN-1-4ljav6drai86zy0wq4ty3ji1e3b31mvx63krntq1cdj78k4qh6-bk4h356q27il162u8iyqgwitw 192.168.99.100:2377
+
+				To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+		6. Agregamos un worker al manager creado previamente
+
+			docker swarm join --token SWMTKN-1-4ljav6drai86zy0wq4ty3ji1e3b31mvx63krntq1cdj78k4qh6-bk4h356q27il162u8iyqgwitw 192.168.99.100:2377
+
+				This node joined a swarm as a worker.
+
+			Congratulations, you have created your first swarm!
+		
+		7. Verificamos el estado del Swarm desde el manager ( No desde el worker!)
+		
+			docker node ls	
+
+				ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS
+				ix6ml4dxsj37ku04w34exojru *   myvm1               Ready               Active              Leader
+				x8vnjtagzdoyq4md464l0p2rf     myvm2               Ready               Active
+
+
+			Importante: Remember that only swarm managers like myvm1 execute Docker commands; workers are just for capacity.	
