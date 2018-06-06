@@ -194,7 +194,7 @@ https://docs.docker.com/get-started/part3/#prerequisites
 
 					Node left the swarm.
 
-=======> CLUSTER/SWARM (servicios en varios nodos - diferentes machines)
+=======> CLUSTER/SWARM (1 servicio en varios nodos - diferentes machines)
 https://docs.docker.com/get-started/part4/		
 
 	Docker Machine 
@@ -482,4 +482,39 @@ https://docs.docker.com/get-started/part4/
 
 				Si se cae el manager, las replicas NO del manager NO pasan al worker
 				Si se levanta el manager, se vuelven a restauran las replicas, quedando tanto el worker como el manager con sus replicas correspondientes.
-					En este caso, queda todo perfectamente balanceado.		
+					En este caso, queda todo perfectamente balanceado.	
+
+				En el stack.yml tenemos configurado para el servicio web:
+					restart_policy: condition: on-failure	
+
+=======> CLUSTER/SWARM/STACK (varios servicios en varios nodos - diferentes machines)
+https://docs.docker.com/get-started/part5/#add-a-new-service-and-redeploy
+
+		1. Nos aseguramos q tenemos las dos maquinas levantandas (myvm1 y myvm2)
+		
+		2. Que las 8 replicas esten running
+
+		3. VISUZALIZER: Agregamos un nuevo servicio al stack. En este ej agregamos ademas del servicio web el servicio visualizer solo en el manager (no 	en el worker)
+
+		4. redeployamos nuevamente el stack
+			docker stack deploy -c stack.yml getstartedlab
+
+			Updating service getstartedlab_web (id: bkgfjuzrgx2vm4a5iga5bo11x)
+			Creating service getstartedlab_visualizer
+
+		5. verificamos los servicios activos desde el manager
+			
+			docker service ls
+				ID                  NAME                       MODE                REPLICAS            IMAGE                             PORTS
+				46dtqlwuq20c        getstartedlab_visualizer   replicated          1/1                 dockersamples/visualizer:stable   *:8080->8080/tcp
+				bkgfjuzrgx2v        getstartedlab_web          replicated          8/8                 damianciocca/examples:part2       *:80->80/tcp	
+
+		6. abrimos el visualizer desde el browser (con la IP del manager... myvm1)
+			
+			http://192.168.99.100:8080/	
+
+			The single copy of visualizer is running on the manager as you expect, and the 5 instances of web are spread out across the swarm. You can corroborate this visualization by running docker stack ps getstartedlab
+
+		7. REDIS: Agregamos un nuevo servicio	
+
+
