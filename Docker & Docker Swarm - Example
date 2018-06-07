@@ -499,8 +499,8 @@ https://docs.docker.com/get-started/part5/#add-a-new-service-and-redeploy
 		4. redeployamos nuevamente el stack
 			docker stack deploy -c stack.yml getstartedlab
 
-			Updating service getstartedlab_web (id: bkgfjuzrgx2vm4a5iga5bo11x)
-			Creating service getstartedlab_visualizer
+				Updating service getstartedlab_web (id: bkgfjuzrgx2vm4a5iga5bo11x)
+				Creating service getstartedlab_visualizer
 
 		5. verificamos los servicios activos desde el manager
 			
@@ -516,5 +516,22 @@ https://docs.docker.com/get-started/part5/#add-a-new-service-and-redeploy
 			The single copy of visualizer is running on the manager as you expect, and the 5 instances of web are spread out across the swarm. You can corroborate this visualization by running docker stack ps getstartedlab
 
 		7. REDIS: Agregamos un nuevo servicio	
+			
+			para este servicio tenemos q crear un directorio en el manager (myvm1)
+			docker-machine ssh myvm1 "mkdir ./data"
 
+		8. redeployamos el stack
+			docker stack deploy -c stack.yml getstartedlab
+
+				Updating service getstartedlab_visualizer (id: 46dtqlwuq20c504tnkm8vqpoy)
+				Creating service getstartedlab_redis
+				Updating service getstartedlab_web (id: bkgfjuzrgx2vm4a5iga5bo11x)	
+
+			docker service ls
+			
+				ID                  NAME                       MODE                REPLICAS            IMAGE                             PORTS
+				46dtqlwuq20c        getstartedlab_visualizer   replicated          1/1                 dockersamples/visualizer:stable   *:8080->8080/tcp
+				bkgfjuzrgx2v        getstartedlab_web          replicated          8/8                 damianciocca/examples:part2       *:80->80/tcp
+				n1eyvg3kp7q3        getstartedlab_redis        replicated          1/1                 redis:latest                      *:6379->6379/tcp
+	
 
