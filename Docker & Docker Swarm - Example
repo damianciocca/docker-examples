@@ -535,3 +535,28 @@ https://docs.docker.com/get-started/part5/#add-a-new-service-and-redeploy
 				n1eyvg3kp7q3        getstartedlab_redis        replicated          1/1                 redis:latest                      *:6379->6379/tcp
 	
 
+
+
+
+Probando traefic - stack-2.yaml (3 instancias de traefic y 3 instancias de API web)
+
+	docker stack deploy -c stack-2.yml  webnet
+
+	Traefic -> http://192.168.99.100:8080/dashboard/
+	
+		Api:
+			http://192.168.99.100/core
+			http://192.168.99.101/core
+			curl http://192.168.99.100/core
+
+	Visualizer -> http://192.168.99.100:8081
+
+	docker service ls
+
+	damian@Damians-MacBook-Pro ~/D/w/docker-web-example> docker service ls
+	ID                  NAME                MODE                REPLICAS            IMAGE                             PORTS
+	1jie2l4d8olf        webnet_visualizer   replicated          1/1                 dockersamples/visualizer:stable   *:8081->8080/tcp
+	eioy6qgox68u        webnet_web          replicated          3/3                 damianciocca/examples:part2
+	f4rrhi9psrvz        webnet_traefik      replicated          3/3                 traefik:latest                    *:80->80/tcp,*:443->443/tcp,*:8080->8080/tcp
+
+
