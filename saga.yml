@@ -1,0 +1,61 @@
+version: "3.3"
+services:
+  traefik:
+      image: traefik:1.5.3
+      networks:
+        - saga
+      ports:
+        - "80:80"
+        - "8080:8080"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      configs:
+        - source: traefik-1523452532
+          target: /traefik.toml
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "10m"
+          max-file: "5"
+      deploy:
+        mode: global
+        placement:
+          constraints:
+            - node.role == manager
+
+  core:
+    image: damianciocca/examples:part4
+    ports:
+    - '9090'
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "5"
+    environment:
+    - ENV_NAME=staging
+    - WORKER_POOL_SIZE=20
+    - WEBSOCKET_VERTICLES=4
+    - WORKER_EXECUTE_TIME=120000000000
+    networks:
+    - saga
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.backend=restapi"
+        - "traefik.enable=true"
+        - "traefik.port=9090"
+        - "traefik.docker.network=saga_saga"
+        - "traefik.frontend.rule=PathPrefixStrip:/core"
+        #- "traefik.frontend.rule=Host:api.coolapp.com"
+      update_config:
+        parallelism: 1
+configs:
+  traefik-1523452532:
+    file: ./config/traefik.toml
+
+networks:
+  saga:
+    attachable: true
+    driver: overlay
