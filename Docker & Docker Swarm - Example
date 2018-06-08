@@ -560,3 +560,38 @@ Probando traefic - stack-2.yaml (3 instancias de traefic y 3 instancias de API w
 	f4rrhi9psrvz        webnet_traefik      replicated          3/3                 traefik:latest                    *:80->80/tcp,*:443->443/tcp,*:8080->8080/tcp
 
 
+Probando traefic - saga.yaml (3 instancias de traefic y 3 instancias de API web)
+
+	Ahora la api esta expuesta en el puerto 9090 (ver dockerfile)
+
+	En el stack saga.yml se pone el puerto 9090 como puerto interno de la api
+
+	Ahora tenemos dos endpoints => uno q atiende en / y otra en /hello (ambos get)
+		http://192.168.99.100/core
+		http://192.168.99.100/core/hello
+
+		Sino ponemos "core" traefik no va a redirijir el request a la api 
+
+	Y como vemos el label "core" se reemplaza por "" segun la regla q pusimos en el stack
+	 	- "traefik.frontend.rule=PathPrefixStrip:/core"	
+
+	De esta manera todo lo q pontamos como core va a ir a:
+	
+		core:
+		    image: damianciocca/examples:part4
+		    ports:
+		    - '9090'
+		    networks:
+		    - saga
+		    deploy:
+		      mode: replicated
+		      replicas: 1
+		      labels:
+		        - "traefik.backend=restapi"
+		        - "traefik.enable=true"
+		        - "traefik.port=9090"
+		        - "traefik.docker.network=saga_saga"
+		        - "traefik.frontend.rule=PathPrefixStrip:/core"
+		        #- "traefik.frontend.rule=Host:api.coolapp.com"
+		      update_config:
+		        parallelism: 1
