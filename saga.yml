@@ -1,39 +1,44 @@
 version: "3.3"
 services:
   traefik:
-      image: traefik:1.5.3
-      networks:
-        - saga
-      ports:
-        - "80:80"
-        - "8080:8080"
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-      configs:
-        - source: traefik-1523452532
-          target: /traefik.toml
-      logging:
-        driver: "json-file"
-        options:
-          max-size: "10m"
-          max-file: "5"
-      deploy:
-        mode: global
-        placement:
-          constraints:
-            - node.role == manager
-
+    image: traefik
+    networks:
+    - saga
+    ports:
+    - 80:80
+    - 8080:8080
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+    - source: traefik
+      target: /traefik.toml
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    deploy:
+      mode: global
+      placement:
+        constraints:
+        - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
   core:
     image: damianciocca/examples:part4
     ports:
-    - '9090'
+    - 9090
     logging:
       driver: json-file
       options:
         max-size: 100m
         max-file: "5"
+    hostname: core-{{.Task.Slot}}
     environment:
-    - ENV_NAME=staging
+    - ENV_NAME=production
     - WORKER_POOL_SIZE=20
     - WEBSOCKET_VERTICLES=4
     - WORKER_EXECUTE_TIME=120000000000
@@ -42,20 +47,64 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      placement:
+        constraints:
+        - node.role != manager
       labels:
-        - "traefik.backend=restapi"
-        - "traefik.enable=true"
-        - "traefik.port=9090"
-        - "traefik.docker.network=saga_saga"
-        - "traefik.frontend.rule=PathPrefixStrip:/core"
-        #- "traefik.frontend.rule=Host:api.coolapp.com"
+      - traefik.frontend.rule=PathPrefixStrip:/core
+      - traefik.docker.network=saga_saga
+      - traefik.port=9090
       update_config:
         parallelism: 1
+  log:
+    image: gliderlabs/logspout
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    command: syslog+tls://logs4.papertrailapp.com:43614
+    deploy:
+      mode: global
+      placement:
+        constraints:
+        - node.role != manager
+    networks:
+    - saga
+  datadog-agent:
+    image: datadog/docker-dd-agent:latest
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /proc/:/host/proc/:ro
+    - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    environment:
+    - DD_API_KEY=347eba1179bdd373916f787aa73d520e
+    - SD_BACKEND=docker
+    - TAGS="group:saga, environment:production"
+    - EC2_TAGS=yes
+    deploy:
+      mode: global
+  visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+    - 8000:8080
+    logging:
+      driver: none
+    networks:
+    - saga
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+        - node.role == manager
 configs:
-  traefik-1523452532:
+  traefik:
     file: ./config/traefik.toml
-
 networks:
   saga:
     attachable: true
     driver: overlay
+    ipam:
+      driver: default
+      config:
+      - subnet: 192.168.0.0/16
