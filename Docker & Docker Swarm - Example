@@ -560,7 +560,7 @@ Probando traefic - stack-2.yaml (3 instancias de traefic y 3 instancias de API w
 	f4rrhi9psrvz        webnet_traefik      replicated          3/3                 traefik:latest                    *:80->80/tcp,*:443->443/tcp,*:8080->8080/tcp
 
 
-Probando traefic - saga.yaml (3 instancias de traefic y 3 instancias de API web)
+Probando traefic - saga.yaml (1 instancia de traefic y 1 instancias de API web)
 
 	Ahora la api esta expuesta en el puerto 9090 (ver dockerfile)
 
