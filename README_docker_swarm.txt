@@ -197,6 +197,10 @@ https://docs.docker.com/get-started/part3/#prerequisites
 =======> CLUSTER/SWARM (1 servicio en varios nodos - diferentes machines)
 https://docs.docker.com/get-started/part4/		
 
+	When Docker is running in swarm mode, you can still run standalone containers on any of the Docker hosts participating in the swarm, as well as swarm services. A key difference between standalone containers and swarm services is that only swarm managers can manage a swarm, while standalone containers can be started on any daemon.
+
+	In the same way that you can use Docker Compose to define and run containers, you can define and run swarm service stacks.
+
 	Docker Machine 
 
 		1. Overview
@@ -595,3 +599,129 @@ Probando traefic - saga.yaml (1 instancia de traefic y 1 instancias de API web)
 		        #- "traefik.frontend.rule=Host:api.coolapp.com"
 		      update_config:
 		        parallelism: 1
+
+
+=======> ESCALING (3 host. 1 manager y 2 worker)
+https://docs.docker.com/engine/swarm/swarm-tutorial/
+
+1. creamos una nueva docker-machine (myvm3)
+
+	docker-machine ls
+		NAME    ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER        ERRORS
+		myvm1   *        virtualbox   Running   tcp://192.168.99.100:2376           v18.05.0-ce
+		myvm2   -        virtualbox   Running   tcp://192.168.99.101:2376           v18.05.0-ce
+		myvm3   -        virtualbox   Running   tcp://192.168.99.102:2376           v18.05.0-ce
+
+2. unimos al swarm existente, un nuevo host (myvm3)
+
+	desde el manager, obtenemos el token
+		docker swarm join-token worker
+
+	entramos al nuevo host (worker) myvm3
+		    docker swarm join --token SWMTKN-1-52jc4ek41g5d2q6r9yxfe9kbo9zck5vluatr9pvg0p7535wvbc-7uvoniz6nkrsrwkixg6pjmfm1 192.168.99.100:2377
+
+	despues de varios minutos entramos al visualizer
+		http://192.168.99.100:8000/
+
+		Nota: vemos q todos los servicios q no tengan alguna restriccion o q NO se haya alcanzado el numero de replicas van a aparecer en el nuevo nodo
+
+	IMPORTANTE
+		
+		Si queremos unir otro manager en lugar de un worker
+			docker swarm join-token manager	
+
+		entramos al nuevo host (manager) myvm4 y copiamos y pegamos el comando de join.		
+
+3. inspeccionamos cada uno de los host (el manager y los dos worker)
+
+	docker info
+
+4. inspeccionamos cada uno de los servicios
+
+	docker service inspect --pretty saga_core
+
+5. Once you have deployed a service to a swarm, you are ready to use the Docker CLI to scale the number of containers in the service. 
+	Containers running in a service are called “tasks.”		
+
+	En caso que tengamos solo 1 servicio saga_core => agregamos uno mas y vemos q se deberia deployar en el nuevo host
+
+		docker service scale saga_core=2
+			saga_core scaled to 2
+
+	Verificamos los task(containers) del servicio saga_core
+	
+		docker service ps saga_core
+
+		ID                  NAME                IMAGE                         NODE                DESIRED STATE       CURRENT STATE                ERROR               PORTS
+		7qctrtrt81m6        saga_core.1         damianciocca/examples:part4   myvm2               Running             Running about an hour ago
+		tqpbalvlemr0         \_ saga_core.1     damianciocca/examples:part4   myvm1               Shutdown            Shutdown about an hour ago
+		ruiuuytys7nt         \_ saga_core.1     damianciocca/examples:part4   myvm2               Shutdown            Shutdown about an hour ago
+		sa27t6wkju8u         \_ saga_core.1     damianciocca/examples:part2   myvm2               Shutdown            Shutdown 3 days ago
+		5pw1nautw6f7        saga_core.2         damianciocca/examples:part4   myvm3               Running             Running 40 seconds ago		
+
+
+	Entramos en cada worker (myvm2 y myvm3)
+	
+		myvm2
+		docker logs 6bcd26869084 --follow
+
+		myvm3
+		docker logs bfbd9bda6561 --follow	
+
+	Desde el manager o otra terminal
+	
+		curl http://192.168.99.100/core
+		curl http://192.168.99.101/core
+		curl http://192.168.99.102/core
+
+		Nota: le pegue a la IP q le pegue, puede responder la ip del myvm2 o myvm3
+
+
+6. Drain a node on the swarm (inhabilitandolo para que el manager no lo tenga en cuenta) 
+	NOTA: Siempre lo ejecutamos desde el manager
+	
+	docker node ls
+		ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS
+		mpfzcpphfh32yt2unwoar82go     myvm3               Ready               Active
+		wrrnqvvi9m7dy8bpl86zo9ob2 *   myvm1               Ready               Active              Leader
+		z9drsmeaio3yahvohch6xdjat     myvm2               Ready               Active
+
+	docker node update --availability drain myvm2
+		
+	docker node ls
+		ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS
+		mpfzcpphfh32yt2unwoar82go     myvm3               Ready               Active
+		wrrnqvvi9m7dy8bpl86zo9ob2 *   myvm1               Ready               Active              Leader
+		z9drsmeaio3yahvohch6xdjat     myvm2               Ready               Drain
+
+	Por visualizer podemos ver como las replicas que estaban en myvm2 pasaron a myvm3
+
+	Si deployamos nuevamente el stack, no se van a deployar en el nodo myvm2 AVAILABILITY = Drain
+
+7. volvemos a activar el nodo
+
+	docker node update --availability active myvm2	
+
+	docker node ls
+		ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS
+		mpfzcpphfh32yt2unwoar82go     myvm3               Ready               Active
+		wrrnqvvi9m7dy8bpl86zo9ob2 *   myvm1               Ready               Active              Leader
+		z9drsmeaio3yahvohch6xdjat     myvm2               Ready               Active
+
+
+=======> ADMIN SWARM
+https://docs.docker.com/engine/swarm/admin_guide/
+https://docs.docker.com/engine/swarm/how-swarm-mode-works/nodes/
+https://docs.docker.com/engine/swarm/how-swarm-mode-works/services/
+https://docs.docker.com/engine/swarm/swarm-mode/
+
+	docker stats
+
+	docker stats <container-id/container-name>
+
+	IMPORTANTE:
+	When initiating a swarm, you must specify the --advertise-addr flag to advertise your address to other manager nodes in the swarm. For more information, see Run Docker Engine in swarm mode. Because manager nodes are meant to be a stable component of the infrastructure, you should use a fixed IP address for the advertise address to prevent the swarm from becoming unstable on machine reboot.
+
+	If the whole swarm restarts and every manager node subsequently gets a new IP address, there is no way for any node to contact an existing manager. Therefore the swarm is hung while nodes try to contact one another at their old IP addresses.
+
+	Dynamic IP addresses are OK for worker nodes
